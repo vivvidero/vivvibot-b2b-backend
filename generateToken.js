@@ -11,7 +11,7 @@ const generateToken = (user) => {
 
   // Opciones del token
   const options = {
-    expiresIn: '1h' // El token expirará en 1 hora
+    expiresIn: '1d' // El token expirará en 1 hora
   };
 
   // Generar el token
