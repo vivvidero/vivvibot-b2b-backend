@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../db/db');
+const verifyToken = require('../middleware/verifyToken'); // Importar el middleware
 const router = express.Router();
 
 // Obtener los costos desde la base de datos
@@ -9,7 +10,7 @@ const getCosts = async () => {
     const res = await client.query('SELECT area, price FROM costs');
     const costs = {};
     res.rows.forEach(row => {
-      costs[row.area] = row.price;
+      costs[row.area] = Math.round(row.price); // Redondear al valor más cercano
     });
     return costs;
   } finally {
@@ -17,7 +18,8 @@ const getCosts = async () => {
   }
 };
 
-router.post('/calculate', async (req, res) => {
+// Ruta POST para calcular los costos
+router.post('/calculate', verifyToken, async (req, res) => {
   const { square_meters } = req.body;
 
   try {
@@ -31,14 +33,14 @@ router.post('/calculate', async (req, res) => {
         results[area] = cost;
         total += cost;
       } else {
-        results[area] = "Area no encontrada en la base de datos";
+        results[area] = "Area not found in database";
       }
     }
 
     results['total'] = total;
     res.json(results);
   } catch (error) {
-    res.status(500).json({ error: 'Error calculando costos' });
+    res.status(500).json({ error: 'Error calculating costs' });
   }
 });
 

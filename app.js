@@ -1,13 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors')
+const cors = require('cors');
 const pool = require('./db/db');
 const bodyParser = require('body-parser');
 const authRoutes = require('./routes/auth');
 const costRoutes = require('./routes/costs');
 
 const app = express();
-app.use(cors())
+app.use(cors());
 app.use(bodyParser.json());
 
 // Conexión a la base de datos
