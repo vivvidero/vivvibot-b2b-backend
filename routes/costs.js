@@ -1,9 +1,9 @@
 const express = require('express');
-const pool = require('../db/db');
 const verifyToken = require('../middleware/verifyToken');
+const pool = require('../db/db');
+
 const router = express.Router();
 
-// Obtener los costos desde la base de datos
 const getCosts = async () => {
   const client = await pool.connect();
   try {
@@ -18,24 +18,31 @@ const getCosts = async () => {
   }
 };
 
-// Guardar los cálculos en la base de datos
-const saveCalculations = async (userId, calculations) => {
+const saveCalculations = async (userId, clientId, results) => {
   const client = await pool.connect();
   try {
-    const queryText = 'INSERT INTO calculations (user_id, area, square_meters, cost, timestamp) VALUES ($1, $2, $3, $4, NOW()::TIMESTAMP(0))';
-    for (const area in calculations) {
-      if (area !== 'total') {
-        const { squareMeters, cost } = calculations[area];
-        await client.query(queryText, [userId, area, squareMeters, Number(cost.toFixed(2))]);
-      }
-    }
+    await Promise.all(
+      Object.keys(results).map(async (area) => {
+        if (area !== 'total' && results[area].cost !== 'Area no hallada en la base de datos') {
+          console.log(`Saving calculation: userId=${userId}, clientId=${clientId}, area=${area}, squareMeters=${results[area].squareMeters}, cost=${results[area].cost}`);
+          await client.query(
+            'INSERT INTO calculations (user_id, client_id, area, square_meters, cost) VALUES ($1, $2, $3, $4, $5)',
+            [userId, clientId, area, results[area].squareMeters, results[area].cost]
+          );
+        }
+      })
+    );
+  } catch (err) {
+    console.error('Error saving calculations:', err);
+    throw err;
   } finally {
     client.release();
   }
 };
 
+// Actualiza la ruta para el cálculo de costos
 router.post('/calculate', verifyToken, async (req, res) => {
-  const { square_meters } = req.body;
+  const { clientId, square_meters } = req.body;
 
   try {
     const costs = await getCosts();
@@ -61,15 +68,17 @@ router.post('/calculate', verifyToken, async (req, res) => {
 
     results['total'] = Number(total.toFixed(2));
 
+    console.log(`Calculated results: ${JSON.stringify(results)}`);
+
     // Guardar los cálculos en la base de datos
-    await saveCalculations(userId, results);
+    await saveCalculations(userId, clientId, results);
 
     res.json(results);
   } catch (error) {
-    res.status(500).json({ error: 'Error calculando costos' });
+    console.error('Error calculating costs:', error);
+    res.status(500).json({ error: 'Error calculating costs' });
   }
 });
 
+
 module.exports = router;
-
-

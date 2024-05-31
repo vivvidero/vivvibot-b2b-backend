@@ -99,4 +99,23 @@ router.post('/onboarding', verifyToken, async (req, res) => {
   }
 });
 
+// Ruta para guardar datos del comprador
+router.post('/buyer', verifyToken, async (req, res) => {
+  const { name, email, phone, location } = req.body;
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO buyerdata (name, email, phone, location) VALUES ($1, $2, $3, $4) RETURNING id',
+      [name, email, phone, location]
+    );
+    
+    const clientId = result.rows[0].id;
+    res.status(201).json({ message: 'Client created successfully', clientId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 module.exports = router;
