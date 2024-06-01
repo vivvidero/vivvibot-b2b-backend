@@ -18,31 +18,32 @@ const getCosts = async () => {
   }
 };
 
-const saveCalculations = async (userId, clientId, results) => {
+// Guardar los calculos en la BD
+const saveCalculations = async (userId, results) => {
   const client = await pool.connect();
   try {
     await Promise.all(
       Object.keys(results).map(async (area) => {
         if (area !== 'total' && results[area].cost !== 'Area no hallada en la base de datos') {
-          console.log(`Saving calculation: userId=${userId}, clientId=${clientId}, area=${area}, squareMeters=${results[area].squareMeters}, cost=${results[area].cost}`);
+          console.log(`Saving calculation: userId=${userId}, area=${area}, squareMeters=${results[area].squareMeters}, cost=${results[area].cost}`);
           await client.query(
-            'INSERT INTO calculations (user_id, client_id, area, square_meters, cost) VALUES ($1, $2, $3, $4, $5)',
-            [userId, clientId, area, results[area].squareMeters, results[area].cost]
+            'INSERT INTO calculations (user_id, area, square_meters, cost) VALUES ($1, $2, $3, $4)',
+            [userId, area, results[area].squareMeters, results[area].cost]
           );
         }
       })
     );
   } catch (err) {
-    console.error('Error saving calculations:', err);
+    console.error('Error guardando los cálculos:', err);
     throw err;
   } finally {
     client.release();
   }
 };
 
-// Actualiza la ruta para el cálculo de costos
+// Ruta para calcular los espacios
 router.post('/calculate', verifyToken, async (req, res) => {
-  const { clientId, square_meters } = req.body;
+  const { square_meters } = req.body;
 
   try {
     const costs = await getCosts();
@@ -71,14 +72,36 @@ router.post('/calculate', verifyToken, async (req, res) => {
     console.log(`Calculated results: ${JSON.stringify(results)}`);
 
     // Guardar los cálculos en la base de datos
-    await saveCalculations(userId, clientId, results);
+    await saveCalculations(userId, results);
 
     res.json(results);
   } catch (error) {
-    console.error('Error calculating costs:', error);
-    res.status(500).json({ error: 'Error calculating costs' });
+    console.error('Error calculando costos:', error);
+    res.status(500).json({ error: 'Error calculando costos' });
   }
 });
 
+//Ruta para guardar el presupuesto del cliente
+router.post('/budget', verifyToken, async (req, res) => {
+  const { budget } = req.body;
+  const userId = req.user.id;
+
+  if (!budget || isNaN(budget)) {
+    return res.status(400).json({ message: 'Presupuesto inválido' });
+  }
+
+  try {
+    const date = new Date();
+    const formattedDate = date.toISOString().slice(0, 19).replace('T', ' '); 
+    const result = await pool.query(
+      'INSERT INTO remodelation_budget (user_id, budget, created_at) VALUES ($1, $2, $3) RETURNING *',
+      [userId, budget, formattedDate]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al guardar el presupuesto de remodelación:', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
 
 module.exports = router;
