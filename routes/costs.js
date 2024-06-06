@@ -86,7 +86,9 @@ router.post('/budget', verifyToken, async (req, res) => {
   const { budget } = req.body;
   const userId = req.user.id;
 
-  if (!budget || isNaN(budget)) {
+  console.log(budget);
+
+  if (!budget) {
     return res.status(400).json({ message: 'Presupuesto inválido' });
   }
 
@@ -95,7 +97,7 @@ router.post('/budget', verifyToken, async (req, res) => {
     const formattedDate = date.toISOString().slice(0, 19).replace('T', ' '); 
     const result = await pool.query(
       'INSERT INTO remodelation_budget (user_id, budget, created_at) VALUES ($1, $2, $3) RETURNING *',
-      [userId, budget, formattedDate]
+      [userId, parseInt(budget), formattedDate]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
