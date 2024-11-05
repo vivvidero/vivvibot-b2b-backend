@@ -146,7 +146,6 @@ router.post('/buyer', verifyToken, async (req, res) => {
           firstname: name,
           phone: phone,
           city: location,
-          source: 'Vivvibot-B2B'
         };
         await hubspotClient.crm.contacts.basicApi.update(contactId, { properties });
       } else {
